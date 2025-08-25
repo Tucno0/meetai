@@ -10,6 +10,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import z from 'zod';
 
 import { OctagonAlertIcon } from 'lucide-react';
+import { FaGithub, FaGoogle } from 'react-icons/fa';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -62,21 +63,41 @@ export const SignUpView = () => {
         name: data.name,
         email: data.email,
         password: data.password,
+        callbackURL: '/',
       },
       {
         onSuccess: () => {
+          setPending(false);
           router.push('/');
         },
         onError: ({ error }) => {
-          console.log(error);
+          setError(error.message);
+          setPending(false);
+        },
+      }
+    );
+  };
+
+  const onSocial = (provider: 'google' | 'github') => {
+    setError(null);
+    setPending(true);
+
+    authClient.signIn.social(
+      {
+        provider,
+        callbackURL: '/',
+      },
+      {
+        onSuccess: () => {
+          setPending(false);
+        },
+        onError: ({ error }) => {
+          setPending(false);
           setError(error.message);
         },
       }
     );
-
-    setPending(false);
   };
-
   return (
     <div className="flex flex-col gap-6">
       <Card className="overflow-hidden p-0">
@@ -181,9 +202,8 @@ export const SignUpView = () => {
                 )}
 
                 <Button type="submit" className="w-full" disabled={pending}>
-                  Sign In
+                  Sign Up
                 </Button>
-
                 <div className="after:border-border relative text-center text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t">
                   <span className="bg-card text-muted-foreground relative z-10 px-2">
                     Or continue with
@@ -195,9 +215,10 @@ export const SignUpView = () => {
                     type="button"
                     variant="outline"
                     className="w-full"
+                    onClick={() => onSocial('google')}
                     disabled={pending}
                   >
-                    Google
+                    <FaGoogle />
                   </Button>
 
                   <Button
@@ -205,8 +226,9 @@ export const SignUpView = () => {
                     variant="outline"
                     className="w-full"
                     disabled={pending}
+                    onClick={() => onSocial('github')}
                   >
-                    GitHub
+                    <FaGithub />
                   </Button>
                 </div>
 
