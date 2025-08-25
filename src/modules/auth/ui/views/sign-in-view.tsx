@@ -10,6 +10,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import z from 'zod';
 
 import { OctagonAlertIcon } from 'lucide-react';
+import { FaGithub, FaGoogle } from 'react-icons/fa';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -50,19 +51,40 @@ export const SignInView = () => {
       {
         email: data.email,
         password: data.password,
+        callbackURL: '/',
       },
       {
         onSuccess: () => {
           router.push('/');
+          setPending(false);
         },
         onError: ({ error }) => {
-          console.log(error);
+          setError(error.message);
+          setPending(false);
+        },
+      }
+    );
+  };
+
+  const onSocial = (provider: 'google' | 'github') => {
+    setError(null);
+    setPending(true);
+
+    authClient.signIn.social(
+      {
+        provider,
+        callbackURL: '/',
+      },
+      {
+        onSuccess: () => {
+          setPending(false);
+        },
+        onError: ({ error }) => {
+          setPending(false);
           setError(error.message);
         },
       }
     );
-
-    setPending(false);
   };
 
   return (
@@ -144,18 +166,20 @@ export const SignInView = () => {
                     type="button"
                     variant="outline"
                     className="w-full"
+                    onClick={() => onSocial('google')}
                     disabled={pending}
                   >
-                    Google
+                    <FaGoogle />
                   </Button>
 
                   <Button
                     type="button"
                     variant="outline"
                     className="w-full"
+                    onClick={() => onSocial('github')}
                     disabled={pending}
                   >
-                    GitHub
+                    <FaGithub />
                   </Button>
                 </div>
 
