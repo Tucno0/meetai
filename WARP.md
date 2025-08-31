@@ -2,115 +2,124 @@
 
 This file provides guidance to WARP (warp.dev) when working with code in this repository.
 
+## Project Overview
+
+MeetAI is a Next.js 15 application built with React 19, TypeScript, and a modern tech stack including Drizzle ORM with PostgreSQL, Better Auth for authentication, and shadcn/ui for components.
+
 ## Development Commands
 
-**Start development server with Turbopack:**
+### Core Development
 ```bash
+# Start development server with Turbopack
 bun dev
-```
-Default URL: http://localhost:3000
 
-**Build for production:**
-```bash
-bun run build
-```
+# Build for production
+bun build
 
-**Start production server:**
-```bash
+# Start production server
 bun start
+
+# Lint code
+bun lint
 ```
 
-**Linting:**
-```bash
-bun run lint
-```
-
-**Database operations:**
+### Database Operations
 ```bash
 # Push schema changes to database
-bun run db:push
+bun db:push
 
 # Open Drizzle Studio (database GUI)
-bun run db:studio
+bun db:studio
+```
+
+### Component Management
+```bash
+# Add new shadcn/ui components
+bunx --bun shadcn@latest add [component-name]
+
+# Add all available components
+bunx --bun shadcn@latest add --all
 ```
 
 ## Architecture Overview
 
-This is a modern Next.js 15 application using the App Router with a full-stack authentication system and PostgreSQL database.
-
-### Key Technologies
-- **Framework:** Next.js 15 with App Router and Turbopack
-- **Runtime:** Bun as package manager and runtime
-- **Styling:** Tailwind CSS v4 with shadcn/ui components
-- **Database:** PostgreSQL with Drizzle ORM
-- **Authentication:** Better Auth with email/password authentication
-- **UI Components:** shadcn/ui (New York style) with Radix UI primitives
-- **Icons:** Lucide React
-- **Forms:** React Hook Form with Zod validation
+### Tech Stack
+- **Framework**: Next.js 15 with App Router
+- **Runtime**: React 19
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS v4
+- **Components**: shadcn/ui (New York style)
+- **Database**: PostgreSQL via Neon
+- **ORM**: Drizzle ORM
+- **Authentication**: Better Auth
+- **Package Manager**: Bun
+- **Form Handling**: React Hook Form + Zod validation
 
 ### Project Structure
 ```
 src/
-├── app/                 # Next.js App Router pages
-│   ├── layout.tsx      # Root layout with Geist fonts
-│   └── page.tsx        # Home page with auth form
-├── components/ui/      # shadcn/ui component library
-├── db/                 # Database layer
-│   ├── index.ts        # Drizzle database connection (Neon)
-│   └── schema.ts       # Database schema (users, sessions, accounts, verification)
-├── hooks/              # Custom React hooks
-└── lib/                # Utilities and configurations
-    ├── auth.ts         # Better Auth server configuration
-    ├── auth-client.ts  # Better Auth client configuration
-    └── utils.ts        # Utility functions (tailwind-merge, clsx)
+├── app/                    # Next.js App Router pages
+│   ├── (auth)/            # Authentication routes group
+│   ├── layout.tsx         # Root layout
+│   └── page.tsx           # Home page
+├── components/
+│   └── ui/                # shadcn/ui components
+├── db/
+│   ├── index.ts           # Database connection (Neon)
+│   └── schema.ts          # Drizzle schema definitions
+├── hooks/                 # Custom React hooks
+└── lib/
+    ├── auth.ts            # Better Auth server configuration
+    ├── auth-client.ts     # Better Auth client configuration
+    └── utils.ts           # Utility functions
 ```
 
 ### Database Schema
-The application uses Better Auth's standard schema with:
-- **user**: Core user information (id, name, email, emailVerified, image, timestamps)
-- **session**: User sessions with IP and user agent tracking
-- **account**: OAuth and credential provider accounts
-- **verification**: Email verification tokens
+The application uses a standard authentication schema with:
+- **user**: User profiles with email verification
+- **session**: User sessions with device tracking
+- **account**: OAuth provider accounts
+- **verification**: Email/phone verification tokens
 
-### Authentication Flow
-- Better Auth handles email/password authentication
-- Database adapter connects to PostgreSQL via Drizzle ORM
-- Client-side authentication state managed with React hooks
-- Session management with automatic token refresh
+### Authentication System
+Better Auth is configured with:
+- **Social Providers**: GitHub and Google OAuth
+- **Email/Password**: Traditional authentication
+- **Database Adapter**: Drizzle adapter for PostgreSQL
+- **Session Management**: Server-side sessions with device tracking
 
 ## Environment Setup
 
 Required environment variables (see `.env.example`):
-- `DATABASE_URL`: PostgreSQL connection string (Neon database)
-- `BETTER_AUTH_SECRET`: Secret key for Better Auth
-- `BETTER_AUTH_URL`: Base URL of the application (http://localhost:3000 for dev)
+- `DATABASE_URL`: PostgreSQL connection string (Neon)
+- `BETTER_AUTH_SECRET`: Authentication secret key
+- `BETTER_AUTH_URL`: Application base URL
+- `GITHUB_CLIENT_ID` & `GITHUB_CLIENT_SECRET`: GitHub OAuth
+- `GOOGLE_CLIENT_ID` & `GOOGLE_CLIENT_SECRET`: Google OAuth
 
-## Better Auth Integration
+## Development Guidelines
 
-This project uses Better Auth for authentication. For comprehensive documentation, refer to: https://www.better-auth.com/llms.txt
+### Database Changes
+1. Modify `src/db/schema.ts` for schema changes
+2. Run `bun db:push` to apply changes to database
+3. Use `bun db:studio` to inspect database state
 
-The auth configuration enables:
-- Email/password authentication
-- PostgreSQL database adapter via Drizzle
-- Automatic session management
-- Built-in security features
+### Authentication Flow
+- Server auth config in `src/lib/auth.ts`
+- Client auth utilities in `src/lib/auth-client.ts`
+- Auth routes are grouped under `(auth)` directory
 
-## shadcn/ui Configuration
+### Component Development
+- UI components follow shadcn/ui patterns
+- Use Tailwind CSS for styling
+- Components are fully typed with TypeScript
+- Form validation uses React Hook Form + Zod
 
-The project uses shadcn/ui with:
-- **Style:** New York
-- **Base color:** Neutral
-- **CSS Variables:** Enabled
-- **Icon library:** Lucide React
-- **Path aliases:** Configured for @/components, @/lib, @/hooks, etc.
+### Code Quality
+- ESLint configuration follows Next.js recommended rules
+- TypeScript strict mode enabled
+- Path aliases configured (`@/*` maps to `src/*`)
 
-All shadcn/ui components are pre-installed and available in `src/components/ui/`.
+## Important Context
 
-## Development Notes
-
-- Uses Bun for package management and development
-- Turbopack enabled for faster development builds
-- ESLint configured with Next.js core web vitals and TypeScript rules
-- TypeScript configured with strict mode and path aliases
-- Database operations use Drizzle ORM with PostgreSQL dialect
-- All UI components follow shadcn/ui patterns and design system
+This project references Better Auth documentation for authentication implementation. The Spanish comments in `.github/copilot-instructions.md` indicate Better Auth integration guidance, pointing to the official Better Auth llms.txt resource for AI assistants.

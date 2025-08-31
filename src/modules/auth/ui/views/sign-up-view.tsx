@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import z from 'zod';
+import { z } from 'zod';
 
 import { OctagonAlertIcon } from 'lucide-react';
 import { FaGithub, FaGoogle } from 'react-icons/fa';
@@ -245,7 +245,7 @@ export const SignUpView = () => {
             </form>
           </Form>
 
-          <div className="bg-radial from-green-700 to-green-900 relative hidden md:flex flex-col gap-y-4 items-center justify-center">
+          <div className="bg-radial from-sidebar-accent to-sidebar relative hidden md:flex flex-col gap-y-4 items-center justify-center">
             <Image
               width={100}
               height={100}
