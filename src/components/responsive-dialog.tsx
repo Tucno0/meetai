@@ -42,7 +42,7 @@ export const ResponsiveDialog = ({
             <DrawerDescription>{description}</DrawerDescription>
           </DrawerHeader>
 
-          {children}
+          <div className="p-4">{children}</div>
         </DrawerContent>
       </Drawer>
     );
@@ -56,7 +56,7 @@ export const ResponsiveDialog = ({
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
 
-        <div className="p-4">{children}</div>
+        {children}
       </DialogContent>
     </Dialog>
   );
