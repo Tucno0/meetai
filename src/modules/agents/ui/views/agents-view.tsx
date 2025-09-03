@@ -11,7 +11,6 @@ export const AgentsView = () => {
 
   return (
     <div>
-      <h1>Agents</h1>
       <pre>{JSON.stringify(data, null, 2)}</pre>
     </div>
   );

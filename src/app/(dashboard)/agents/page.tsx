@@ -8,7 +8,7 @@ import {
   AgentsViewLoading,
 } from '@/modules/agents/ui/views/agents-view';
 
-const AgentsPage = () => {
+const AgentsPage = async () => {
   prefetch(trpc.agents.getMany.queryOptions());
 
   return (
