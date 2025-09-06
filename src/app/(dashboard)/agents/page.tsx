@@ -2,6 +2,7 @@ import { Suspense } from 'react';
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { ErrorBoundary } from 'react-error-boundary';
+import type { SearchParams } from 'nuqs/server';
 
 import { HydrateClient, prefetch, trpc } from '@/trpc/server';
 import { auth } from '@/lib/auth';
@@ -11,8 +12,15 @@ import {
   AgentsViewLoading,
 } from '@/modules/agents/ui/views/agents-view';
 import { AgentsListHeader } from '@/modules/agents/ui/components/agents-list-header';
+import { loadSearcherParams } from '@/modules/agents/params';
 
-const AgentsPage = async () => {
+interface AgentsPageProps {
+  searchParams: Promise<SearchParams>;
+}
+
+const AgentsPage = async ({ searchParams }: AgentsPageProps) => {
+  const filters = await loadSearcherParams(searchParams);
+
   const session = await auth.api.getSession({
     headers: await headers(),
   });
@@ -21,7 +29,7 @@ const AgentsPage = async () => {
     redirect('/sign-in');
   }
 
-  prefetch(trpc.agents.getMany.queryOptions());
+  prefetch(trpc.agents.getMany.queryOptions({ ...filters }));
 
   return (
     <>
