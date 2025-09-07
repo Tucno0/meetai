@@ -5,10 +5,10 @@ import {
   MIN_PAGE_SIZE,
 } from '@/constants';
 import { db } from '@/db';
-import { meetings } from '@/db/schema';
+import { agents, meetings } from '@/db/schema';
 import { createTRPCRouter, protectedProcedure } from '@/trpc/init';
 import { TRPCError } from '@trpc/server';
-import { and, count, desc, eq, getTableColumns, ilike } from 'drizzle-orm';
+import { and, count, desc, eq, getTableColumns, ilike, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { meetingsInsertSchema, meetingsUpdateSchema } from '../schemmas';
 
@@ -30,22 +30,30 @@ export const meetingsRouter = createTRPCRouter({
 
       const data = await db
         .select({
-          ...getTableColumns(meetings),
+          ...getTableColumns(meetings), // Selecciona todas las columnas de meetings
+          agent: agents, // Selecciona todas las columnas de agents
+          // Calcula la duración de la reunión en segundos
+          duration: sql<number>`EXTRACT(EPOCH FROM (ended_at - started_at))`.as(
+            'duration'
+          ),
         })
-        .from(meetings)
+        .from(meetings) // Selecciona todas las columnas de meetings
+        .innerJoin(agents, eq(meetings.agentId, agents.id)) // Realiza un INNER JOIN con la tabla agents
         .where(
           and(
-            eq(meetings.userId, ctx.auth.user.id),
-            search ? ilike(meetings.name, `%${search}%`) : undefined
+            eq(meetings.userId, ctx.auth.user.id), // Filtra por el userId del usuario autenticado
+            search ? ilike(meetings.name, `%${search}%`) : undefined // Si se proporciona un término de búsqueda, filtra por el nombre de la reunión
           )
         )
-        .orderBy(desc(meetings.createdAt), desc(meetings.id))
-        .limit(pageSize)
-        .offset((page - 1) * pageSize);
+        .orderBy(desc(meetings.createdAt), desc(meetings.id)) // Ordena por createdAt e id en orden descendente
+        .limit(pageSize) // Limita el número de resultados por página
+        .offset((page - 1) * pageSize); // Paginación
 
+      // Obtiene el total de reuniones del usuario autenticado con el filtro de búsqueda aplicado
       const [total] = await db
         .select({ count: count() })
         .from(meetings)
+        .innerJoin(agents, eq(meetings.agentId, agents.id))
         .where(
           and(
             eq(meetings.userId, ctx.auth.user.id),

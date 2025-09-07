@@ -1,17 +1,18 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { useSuspenseQuery } from '@tanstack/react-query';
 
 import { useTRPC } from '@/trpc/client';
-import { useAgentsFilters } from '../../hooks/use-agents-filters';
 
 import { ErrorState } from '@/components/error-state';
 import { LoadingState } from '@/components/loading-state';
 import { EmptyState } from '@/components/empty-state';
+import { DataTable } from '@/components/data-table';
 import { DataPagination } from '../components/data-pagination';
 import { columns } from '../components/columns';
-import { DataTable } from '../components/data-table';
-import { useRouter } from 'next/navigation';
+
+import { useAgentsFilters } from '../../hooks/use-agents-filters';
 
 export const AgentsView = () => {
   const router = useRouter();
