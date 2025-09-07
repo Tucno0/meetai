@@ -10,7 +10,7 @@ export const MeetingsView = () => {
   const trpc = useTRPC();
   const { data } = useSuspenseQuery(trpc.meetings.getMany.queryOptions({}));
 
-  return <div>{JSON.stringify(data)}</div>;
+  return <div>{JSON.stringify(data, null, 2)}</div>;
 };
 
 export const MeetingsViewLoading = () => {
@@ -21,6 +21,7 @@ export const MeetingsViewLoading = () => {
     />
   );
 };
+
 export const MeetingsViewError = () => {
   return (
     <ErrorState
