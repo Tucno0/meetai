@@ -11,6 +11,8 @@ import { db } from '@/db';
 import { agents, meetings } from '@/db/schema';
 import { TRPCError } from '@trpc/server';
 import { createTRPCRouter, protectedProcedure } from '@/trpc/init';
+import { streamVideo } from '@/lib/stream-video';
+import { generateAvatarUri } from '@/lib/avatar';
 
 import { meetingsInsertSchema, meetingsUpdateSchema } from '../schemmas';
 import { MeetingStatus } from '../types';
@@ -130,8 +132,58 @@ export const meetingsRouter = createTRPCRouter({
         })
         .returning();
 
-      // TODO: Create Stream Call, Upsert Stream Users
+      // Creamos una llamada en Stream Video asociada a la reunión creada
+      const call = streamVideo.video.call('default', createdMeeting.id);
+      await call.create({
+        data: {
+          created_by_id: ctx.auth.user.id, // ID del usuario que crea la reunión
+          custom: {
+            // Datos personalizados
+            meetingsId: createdMeeting.id, // ID de la reunión en nuestra base de datos
+            meetingName: createdMeeting.name, // Nombre de la reunión
+          },
+          settings_override: {
+            // Configuraciones personalizadas para la llamada
+            transcription: {
+              // Configuración de transcripción
+              language: 'en', // Idioma de la transcripción
+              mode: 'auto-on', // Modo de transcripción
+              closed_caption_mode: 'auto-on', // Modo de subtítulos
+            },
+            recording: {
+              // Configuración de grabación
+              mode: 'auto-on', // Modo de grabación
+              quality: '1080p', // Calidad de la grabación
+            },
+          },
+        },
+      });
 
+      // Verificamos que el agentId proporcionado exista
+      const [existingAgent] = await db
+        .select()
+        .from(agents)
+        .where(eq(agents.id, createdMeeting.agentId));
+
+      if (!existingAgent) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'Agent not found',
+        });
+      }
+
+      // Agregamos o actualizamos el agente en Stream Video como usuario
+      await streamVideo.upsertUsers([
+        {
+          id: existingAgent.id,
+          name: existingAgent.name,
+          role: 'user',
+          image: generateAvatarUri({
+            seed: existingAgent.name,
+            variant: 'botttsNeutral',
+          }),
+        },
+      ]);
       return createdMeeting;
     }),
 
@@ -175,4 +227,30 @@ export const meetingsRouter = createTRPCRouter({
 
       return removedMeeting;
     }),
+
+  generateToken: protectedProcedure.mutation(async ({ ctx }) => {
+    // Agregamos o actualizamos el usuario en Stream Video
+    await streamVideo.upsertUsers([
+      {
+        id: ctx.auth.user.id,
+        name: ctx.auth.user.name,
+        role: 'admin',
+        image:
+          ctx.auth.user.image ??
+          generateAvatarUri({ seed: ctx.auth.user.name, variant: 'initials' }),
+      },
+    ]);
+
+    const expirationTime = Math.floor(Date.now() / 1000) + 3600; // expira en 1 hora
+    const issuedAt = Math.floor(Date.now() / 1000) - 60; // emitido hace 1 minuto
+
+    // Generamos el token de Stream Video para el usuario autenticado
+    const token = streamVideo.generateUserToken({
+      user_id: ctx.auth.user.id,
+      expiration: expirationTime,
+      validity_in_seconds: issuedAt, // tiempo de validez
+    });
+
+    return token;
+  }),
 });
