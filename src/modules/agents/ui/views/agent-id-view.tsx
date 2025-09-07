@@ -15,7 +15,7 @@ import { useTRPC } from '@/trpc/client';
 import { ErrorState } from '@/components/error-state';
 import { LoadingState } from '@/components/loading-state';
 import { GeneratedAvatar } from '@/components/generated-avatar';
-import { AgentIdViewHeader } from '../components/agent-id-header';
+import { AgentIdViewHeader } from '../components/agent-id-view-header';
 
 import { Badge } from '@/components/ui/badge';
 import { useConfirm } from '@/hooks/use-confirm';
