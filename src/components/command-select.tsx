@@ -9,6 +9,7 @@ import {
   CommandList,
   CommandResponsiveDialog,
 } from './ui/command';
+import { ChevronsUpDownIcon } from 'lucide-react';
 
 interface Props {
   options: Array<{
@@ -36,6 +37,11 @@ export const CommandSelect = ({
   const [open, setOpen] = useState(false);
   const selectedOption = options.find((option) => option.value === value);
 
+  const handleOpenChange = (open: boolean) => {
+    onSearch?.('');
+    setOpen(open);
+  };
+
   return (
     <>
       <Button
@@ -48,12 +54,14 @@ export const CommandSelect = ({
         )}
         onClick={() => setOpen(!open)}
       >
-        <div className="">{selectedOption?.children ?? placeholder}</div>
+        <div>{selectedOption?.children ?? placeholder}</div>
+
+        <ChevronsUpDownIcon />
       </Button>
 
       <CommandResponsiveDialog
         open={open}
-        onOpenChange={setOpen}
+        onOpenChange={handleOpenChange}
         shouldFilter={!onSearch}
       >
         <CommandInput placeholder="Search..." onValueChange={onSearch} />

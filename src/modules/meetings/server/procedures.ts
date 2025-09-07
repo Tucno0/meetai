@@ -11,6 +11,7 @@ import { TRPCError } from '@trpc/server';
 import { and, count, desc, eq, getTableColumns, ilike, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { meetingsInsertSchema, meetingsUpdateSchema } from '../schemmas';
+import { MeetingStatus } from '../types';
 
 export const meetingsRouter = createTRPCRouter({
   getMany: protectedProcedure
@@ -23,10 +24,20 @@ export const meetingsRouter = createTRPCRouter({
           .max(MAX_PAGE_SIZE)
           .default(DEFAULT_PAGE_SIZE),
         search: z.string().nullish(),
+        agentId: z.string().nullish(),
+        status: z
+          .enum([
+            MeetingStatus.Upcoming,
+            MeetingStatus.Active,
+            MeetingStatus.Completed,
+            MeetingStatus.Processing,
+            MeetingStatus.Cancelled,
+          ])
+          .nullish(),
       })
     )
     .query(async ({ input, ctx }) => {
-      const { page, pageSize, search } = input;
+      const { page, pageSize, search, agentId, status } = input;
 
       const data = await db
         .select({
@@ -42,7 +53,9 @@ export const meetingsRouter = createTRPCRouter({
         .where(
           and(
             eq(meetings.userId, ctx.auth.user.id), // Filtra por el userId del usuario autenticado
-            search ? ilike(meetings.name, `%${search}%`) : undefined // Si se proporciona un término de búsqueda, filtra por el nombre de la reunión
+            search ? ilike(meetings.name, `%${search}%`) : undefined, // Si se proporciona un término de búsqueda, filtra por el nombre de la reunión
+            status ? eq(meetings.status, status) : undefined, // Si se proporciona un estado, filtra por el estado de la reunión
+            agentId ? eq(meetings.agentId, agentId) : undefined // Si se proporciona un agentId, filtra por agentId
           )
         )
         .orderBy(desc(meetings.createdAt), desc(meetings.id)) // Ordena por createdAt e id en orden descendente
@@ -57,7 +70,9 @@ export const meetingsRouter = createTRPCRouter({
         .where(
           and(
             eq(meetings.userId, ctx.auth.user.id),
-            search ? ilike(meetings.name, `%${search}%`) : undefined
+            search ? ilike(meetings.name, `%${search}%`) : undefined,
+            status ? eq(meetings.status, status) : undefined,
+            agentId ? eq(meetings.agentId, agentId) : undefined
           )
         );
 
