@@ -139,7 +139,7 @@ export const meetingsRouter = createTRPCRouter({
           created_by_id: ctx.auth.user.id, // ID del usuario que crea la reunión
           custom: {
             // Datos personalizados
-            meetingsId: createdMeeting.id, // ID de la reunión en nuestra base de datos
+            meetingId: createdMeeting.id, // ID de la reunión en nuestra base de datos
             meetingName: createdMeeting.name, // Nombre de la reunión
           },
           settings_override: {

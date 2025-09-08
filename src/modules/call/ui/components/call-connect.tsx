@@ -32,7 +32,7 @@ export const CallConnect = ({
 }: CallConnectProps) => {
   const trpc = useTRPC();
   const { mutateAsync: generateToken } = useMutation(
-    trpc.meetings.generateToken.mutationOptions({})
+    trpc.meetings.generateToken.mutationOptions()
   );
 
   const [client, setClient] = useState<StreamVideoClient>();

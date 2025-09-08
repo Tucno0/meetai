@@ -9,7 +9,6 @@ import {
   ClockFadingIcon,
   CornerDownRight,
   LoaderIcon,
-  VideoIcon,
 } from 'lucide-react';
 
 import { GeneratedAvatar } from '@/components/generated-avatar';
