@@ -21,6 +21,7 @@ import { ActiveState } from '../components/active-state';
 import { CancelledState } from '../components/cancelled-state';
 import { ProcessingState } from '../components/processing-state';
 import { useConfirm } from '@/hooks/use-confirm';
+import { CompletedState } from '../components/completed-state';
 
 interface MeetingIdViewProps {
   meetingId: string;
@@ -100,7 +101,7 @@ export const MeetingIdView = ({ meetingId }: MeetingIdViewProps) => {
 
         {isProcessing && <ProcessingState />}
 
-        {isCompleted && <div>Completed</div>}
+        {isCompleted && <CompletedState data={data} />}
       </div>
     </>
   );
