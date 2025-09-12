@@ -1,18 +1,28 @@
 import { and, eq, not } from 'drizzle-orm';
 import { NextRequest, NextResponse } from 'next/server';
 
+import OpenAI from 'openai';
+import { ChatCompletionMessageParam } from 'openai/resources/index.mjs';
+
 import {
   CallEndedEvent,
   CallTranscriptionReadyEvent,
   CallRecordingReadyEvent,
   CallSessionParticipantLeftEvent,
   CallSessionStartedEvent,
+  MessageNewEvent,
 } from '@stream-io/node-sdk';
 
 import { db } from '@/db';
 import { agents, meetings } from '@/db/schema';
 import { streamVideo } from '@/lib/stream-video';
 import { inngest } from '@/inngest/client';
+import { generateAvatarUri } from '@/lib/avatar';
+import { streamChat } from '@/lib/stream-chat';
+
+const openaiClient = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
 function verifySignatureWithSDK(body: string, signature: string): boolean {
   return streamVideo.verifyWebhook(body, signature);
@@ -227,6 +237,130 @@ export async function POST(req: NextRequest) {
       .update(meetings)
       .set({ recordingUrl: event.call_recording.url })
       .where(eq(meetings.id, meetingId));
+  } else if (eventType === 'message.new') {
+    // Evento de nuevo mensaje en el chat
+    console.log('➡️ Webhook received: message.new');
+
+    // Manejamos el evento message.new
+    const event = payload as MessageNewEvent;
+
+    // Extraemos los datos que nos interesan del mensaje nuevo
+    const userId = event.user?.id;
+    const channelId = event.channel_id;
+    const text = event.message?.text;
+
+    // Validamos que se hayan recibido todos los datos necesarios
+    if (!userId || !channelId || !text) {
+      console.log('❌ Missing userId, channelId or text in message.new');
+      return NextResponse.json(
+        { error: 'Missing userId, channelId or text in message.new' },
+        { status: 400 }
+      );
+    }
+
+    // Verificamos que el meetingId exista en la base de datos y que esté completado
+    const [existingMeeting] = await db
+      .select()
+      .from(meetings)
+      .where(and(eq(meetings.id, channelId), eq(meetings.status, 'completed')));
+
+    if (!existingMeeting) {
+      console.log('❌ Meeting not found or not completed');
+      return NextResponse.json(
+        { error: 'Meeting not found or not completed' },
+        { status: 404 }
+      );
+    }
+
+    // Verificamos si el agente ya existe en la base de datos de agentes
+    const [existingAgent] = await db
+      .select()
+      .from(agents)
+      .where(eq(agents.id, existingMeeting.agentId));
+
+    if (!existingAgent) {
+      console.log('❌ Agent not found');
+      return NextResponse.json({ error: 'Agent not found' }, { status: 404 });
+    }
+
+    if (userId !== existingAgent.id) {
+      const instructions = `
+        You are an AI assistant helping the user revisit a recently completed meeting.
+        Below is a summary of the meeting, generated from the transcript:
+        
+        ${existingMeeting.summary}
+        
+        The following are your original instructions from the live meeting assistant. Please continue to follow these behavioral guidelines as you assist the user:
+        
+        ${existingAgent.instructions}
+        
+        The user may ask questions about the meeting, request clarifications, or ask for follow-up actions.
+        Always base your responses on the meeting summary above.
+        
+        You also have access to the recent conversation history between you and the user. Use the context of previous messages to provide relevant, coherent, and helpful responses. If the user's question refers to something discussed earlier, make sure to take that into account and maintain continuity in the conversation.
+        
+        If the summary does not contain enough information to answer a question, politely let the user know.
+        
+        Be concise, helpful, and focus on providing accurate information from the meeting and the ongoing conversation.
+      `;
+
+      // Obtenemos el historial reciente de mensajes en el canal
+      const channel = streamChat.channel('messaging', channelId);
+      // Nos conectamos al canal
+      await channel.watch();
+
+      // Nos traemos los últimos 5 mensajes del canal para contexto
+      // Filtramos los mensajes que no tengan texto (por ejemplo, mensajes que solo contienen archivos adjuntos)
+      const previusMessages = channel.state.messages
+        .slice(-5)
+        .filter((msg) => msg.text && msg.text.trim() !== '')
+        .map<ChatCompletionMessageParam>((message) => ({
+          role: message.user?.id === existingAgent.id ? 'assistant' : 'user',
+          content: message.text || '',
+        }));
+
+      // Creamos la solicitud a la API de OpenAI para generar la respuesta del asistente
+      const GPTResponse = await openaiClient.chat.completions.create({
+        messages: [
+          { role: 'system', content: instructions },
+          ...previusMessages,
+          { role: 'user', content: text },
+        ],
+        model: 'gpt-4o',
+      });
+
+      // Obtenemos el texto de la respuesta generada por OpenAI
+      const GTPResponseText = GPTResponse.choices[0].message.content;
+
+      if (!GTPResponseText) {
+        console.log('❌ No response from OpenAI');
+        return NextResponse.json(
+          { error: 'No response from OpenAI' },
+          { status: 400 }
+        );
+      }
+
+      // Generamos una URL de avatar para el asistente basado en el nombre del agente
+      const avatarUrl = generateAvatarUri({
+        seed: existingAgent.name,
+        variant: 'botttsNeutral',
+      });
+
+      streamChat.upsertUser({
+        id: existingAgent.id,
+        name: existingAgent.name,
+        image: avatarUrl,
+      });
+
+      channel.sendMessage({
+        text: GTPResponseText,
+        user: {
+          id: existingAgent.id,
+          name: existingAgent.name,
+          image: avatarUrl,
+        },
+      });
+    }
   }
 
   return NextResponse.json({ status: 'ok' });
