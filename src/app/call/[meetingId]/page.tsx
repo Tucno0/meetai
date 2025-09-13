@@ -5,7 +5,11 @@ import { ErrorBoundary } from 'react-error-boundary';
 
 import { auth } from '@/lib/auth';
 import { HydrateClient, prefetch, trpc } from '@/trpc/server';
-import { CallView } from '@/modules/call/ui/views/call-view';
+import {
+  CallView,
+  CallViewError,
+  CallViewLoading,
+} from '@/modules/call/ui/views/call-view';
 
 interface CallPageProps {
   params: Promise<{ meetingId: string }>;
@@ -26,11 +30,11 @@ const CallPage = async ({ params }: CallPageProps) => {
 
   return (
     <HydrateClient>
-      {/* <Suspense fallback={<MeetingsViewLoading />}> */}
-      {/* <ErrorBoundary fallback={<MeetingsViewError />}> */}
-      <CallView meetingId={meetingId} />
-      {/* </ErrorBoundary> */}
-      {/* </Suspense> */}
+      <Suspense fallback={<CallViewLoading />}>
+        <ErrorBoundary fallback={<CallViewError />}>
+          <CallView meetingId={meetingId} />
+        </ErrorBoundary>
+      </Suspense>
     </HydrateClient>
   );
 };
