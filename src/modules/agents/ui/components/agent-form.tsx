@@ -1,4 +1,4 @@
-// import { useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
@@ -34,7 +34,7 @@ export const AgentForm = ({
   initialValues,
 }: AgentFormProps) => {
   const trpc = useTRPC();
-  // const router = useRouter();
+  const router = useRouter();
   const queryClient = useQueryClient();
 
   const createAgent = useMutation(
@@ -44,7 +44,7 @@ export const AgentForm = ({
           trpc.agents.getMany.queryOptions({})
         );
 
-        // TODO: Invalidate free tier usage
+        queryClient.invalidateQueries(trpc.premium.getFreeUsage.queryOptions());
 
         onSuccess?.();
         toast.success('Agent created');
@@ -53,7 +53,9 @@ export const AgentForm = ({
       onError: (error) => {
         toast.error(error.message);
 
-        // TODO: Check if error code is "FORBIDDEN" and redirect to /upgrade
+        if (error.data?.code === 'FORBIDDEN') {
+          router.push('/upgrade');
+        }
       },
     })
   );

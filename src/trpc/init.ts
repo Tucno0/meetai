@@ -1,7 +1,17 @@
 import { cache } from 'react';
 import { headers } from 'next/headers';
+
+import { count, eq } from 'drizzle-orm';
 import { initTRPC, TRPCError } from '@trpc/server';
+
+import { db } from '@/db';
 import { auth } from '@/lib/auth';
+import { polarClient } from '@/lib/polar';
+import { agents, meetings } from '@/db/schema';
+import {
+  MAX_FREE_AGENTS,
+  MAX_FREE_MEETINGS,
+} from '@/modules/premium/constants';
 
 export const createTRPCContext = cache(async () => {
   /**
@@ -45,3 +55,54 @@ export const protectedProcedure = baseProcedure.use(async ({ ctx, next }) => {
     },
   });
 });
+
+export const premiumProcedure = (entity: 'meetings' | 'agents') =>
+  protectedProcedure.use(async ({ ctx, next }) => {
+    // Obtener el estado del cliente en Polar usando el ID externo (ID del usuario en tu sistema)
+    const customer = await polarClient.customers.getStateExternal({
+      externalId: ctx.auth.user.id,
+    });
+
+    // Contar las reuniones y agentes del usuario
+    const [userMeetings] = await db
+      .select({
+        count: count(meetings.id),
+      })
+      .from(meetings)
+      .where(eq(meetings.userId, ctx.auth.user.id));
+
+    const [userAgents] = await db
+      .select({
+        count: count(agents.id),
+      })
+      .from(agents)
+      .where(eq(agents.userId, ctx.auth.user.id));
+
+    // Si hay suscripción activa, el usuario está en el plan premium
+    const isPremium = customer.activeSubscriptions.length > 0;
+    // Verificar si el usuario ha alcanzado el límite gratuito
+    const isFreeAgentLimitReached = userAgents.count >= MAX_FREE_AGENTS;
+    const isFreeMeetingLimitReached = userMeetings.count >= MAX_FREE_MEETINGS;
+
+    // Si el usuario no es premium y ha alcanzado el límite gratuito, lanzar un error
+    const shouldThrowMeetingError =
+      entity === 'meetings' && isFreeMeetingLimitReached && !isPremium;
+    const shouldThrowAgentError =
+      entity === 'agents' && isFreeAgentLimitReached && !isPremium;
+
+    if (shouldThrowMeetingError) {
+      throw new TRPCError({
+        code: 'FORBIDDEN',
+        message: 'You have reached the maximum number of free meetings',
+      });
+    }
+
+    if (shouldThrowAgentError) {
+      throw new TRPCError({
+        code: 'FORBIDDEN',
+        message: 'You have reached the maximum number of free agents',
+      });
+    }
+
+    return next({ ctx: { ...ctx, customer } });
+  });
